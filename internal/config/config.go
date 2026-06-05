@@ -20,26 +20,37 @@ type Config struct {
 	AllowlistBins         []string `yaml:"allowlist_bins"`
 	IgnorePatterns        []string `yaml:"ignore_patterns"`
 	// Ollama (M5): semantic search and LLM explanations
-	OllamaEnabled    bool   `yaml:"ollama_enabled"`
-	OllamaBaseURL    string `yaml:"ollama_base_url"`
-	OllamaEmbedModel string `yaml:"ollama_embed_model"`
-	OllamaChatModel  string `yaml:"ollama_chat_model"`
+	OllamaEnabled    bool         `yaml:"ollama_enabled"`
+	OllamaBaseURL    string       `yaml:"ollama_base_url"`
+	OllamaEmbedModel string       `yaml:"ollama_embed_model"`
+	OllamaChatModel  string       `yaml:"ollama_chat_model"`
+	Search           SearchConfig `yaml:"search"`
+}
+
+// SearchConfig controls interactive history search (Ctrl-R / hx search).
+type SearchConfig struct {
+	EnterAccept   bool   `yaml:"enter_accept"`   // true = run on Enter; false = insert for edit (default)
+	DefaultFilter string `yaml:"default_filter"` // global, host, dir, session
+	DefaultMode   string `yaml:"default_mode"`   // fuzzy, prefix, fts, semantic
+	UIStyle       string `yaml:"ui_style"`       // full, inline (Phase 2 TUI)
+	InlineHeight  int    `yaml:"inline_height"`
 }
 
 type rawConfig struct {
-	SpoolDir              string   `yaml:"spool_dir"`
-	BlobDir               string   `yaml:"blob_dir"`
-	DbPath                string   `yaml:"db_path"`
-	RetentionEventsMonths int      `yaml:"retention_events_months"`
-	RetentionBlobsDays    int      `yaml:"retention_blobs_days"`
-	BlobDiskCapGB         float64  `yaml:"blob_disk_cap_gb"`
-	AllowlistMode         bool     `yaml:"allowlist_mode"`
-	AllowlistBins         []string `yaml:"allowlist_bins"`
-	IgnorePatterns        []string `yaml:"ignore_patterns"`
-	OllamaEnabled         *bool    `yaml:"ollama_enabled"`
-	OllamaBaseURL         string   `yaml:"ollama_base_url"`
-	OllamaEmbedModel      string   `yaml:"ollama_embed_model"`
-	OllamaChatModel       string   `yaml:"ollama_chat_model"`
+	SpoolDir              string        `yaml:"spool_dir"`
+	BlobDir               string        `yaml:"blob_dir"`
+	DbPath                string        `yaml:"db_path"`
+	RetentionEventsMonths int           `yaml:"retention_events_months"`
+	RetentionBlobsDays    int           `yaml:"retention_blobs_days"`
+	BlobDiskCapGB         float64       `yaml:"blob_disk_cap_gb"`
+	AllowlistMode         bool          `yaml:"allowlist_mode"`
+	AllowlistBins         []string      `yaml:"allowlist_bins"`
+	IgnorePatterns        []string      `yaml:"ignore_patterns"`
+	OllamaEnabled         *bool         `yaml:"ollama_enabled"`
+	OllamaBaseURL         string        `yaml:"ollama_base_url"`
+	OllamaEmbedModel      string        `yaml:"ollama_embed_model"`
+	OllamaChatModel       string        `yaml:"ollama_chat_model"`
+	Search                *SearchConfig `yaml:"search"`
 }
 
 // Load reads config from XDG_CONFIG_HOME/hx/config.yaml. Missing file uses defaults.
@@ -111,6 +122,21 @@ func applyRawConfig(c *Config, raw *rawConfig, dataHome string) {
 	}
 	if raw.OllamaChatModel != "" {
 		c.OllamaChatModel = raw.OllamaChatModel
+	}
+	if raw.Search != nil {
+		if raw.Search.DefaultFilter != "" {
+			c.Search.DefaultFilter = raw.Search.DefaultFilter
+		}
+		if raw.Search.DefaultMode != "" {
+			c.Search.DefaultMode = raw.Search.DefaultMode
+		}
+		if raw.Search.UIStyle != "" {
+			c.Search.UIStyle = raw.Search.UIStyle
+		}
+		if raw.Search.InlineHeight > 0 {
+			c.Search.InlineHeight = raw.Search.InlineHeight
+		}
+		c.Search.EnterAccept = raw.Search.EnterAccept
 	}
 }
 

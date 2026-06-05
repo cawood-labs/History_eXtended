@@ -108,6 +108,8 @@ Use `hx --help` for usage and `hx help <command>` or `hx <command> --help` for s
 | `hx pause` / `resume` | Stop or resume capturing |
 | `hx last` | Last session summary, failure context |
 | `hx find <text>` | Full-text search over commands |
+| `hx search [query]` | History search for Ctrl-R (`--format null` for fzf) |
+| `hx show <event_id>` | Event metadata (`--raw` for command text only) |
 | `hx dump` | Last 20 events (debug) |
 | `hx debug` | Diagnostics: daemon PID, spool, DB |
 | `hx attach --file <path>` | Link artifact to last session |

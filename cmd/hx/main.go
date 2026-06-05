@@ -1358,7 +1358,7 @@ func argsHasHelp(args []string) bool {
 func isKnownCommand(cmd string) bool {
 	known := map[string]bool{
 		"status": true, "pause": true, "resume": true, "last": true, "dump": true,
-		"debug": true, "find": true, "attach": true, "query": true, "import": true,
+		"debug": true, "find": true, "search": true, "show": true, "attach": true, "query": true, "import": true,
 		"pin": true, "forget": true, "export": true, "sync": true,
 	}
 	return known[cmd]
@@ -1375,6 +1375,8 @@ func printRootHelp(w io.Writer) {
 	_, _ = fmt.Fprintln(w, "  resume    resume capturing")
 	_, _ = fmt.Fprintln(w, "  last      last session summary, failure context")
 	_, _ = fmt.Fprintln(w, "  find      full-text search over commands")
+	_, _ = fmt.Fprintln(w, "  search    interactive history search (machine-readable for Ctrl-R)")
+	_, _ = fmt.Fprintln(w, "  show      event metadata by id (preview for search)")
 	_, _ = fmt.Fprintln(w, "  dump      last 20 events (debug)")
 	_, _ = fmt.Fprintln(w, "  debug     diagnostics: daemon PID, spool, DB event count")
 	_, _ = fmt.Fprintln(w, "  attach    link artifact to session")
@@ -1399,6 +1401,21 @@ var helpRegistry = map[string]func(io.Writer){
 		_, _ = fmt.Fprintln(w, "hx status")
 		_, _ = fmt.Fprintln(w, "")
 		_, _ = fmt.Fprintln(w, "Show capture state, daemon health, and configured paths (spool, db, events).")
+	},
+	"search": func(w io.Writer) {
+		_, _ = fmt.Fprintln(w, "hx search: usage: hx search [query] [options]")
+		_, _ = fmt.Fprintln(w, "  Search command history for Ctrl-R / fzf integration.")
+		_, _ = fmt.Fprintln(w, "  --filter global|host|dir|session   scope results (default: config or global)")
+		_, _ = fmt.Fprintln(w, "  --mode fuzzy|prefix|fts|semantic    match mode (default: fuzzy)")
+		_, _ = fmt.Fprintln(w, "  --format table|tsv|null|json        output (default: table; null for fzf)")
+		_, _ = fmt.Fprintln(w, "  --limit N                           max rows (default: 50)")
+		_, _ = fmt.Fprintln(w, "  --no-dedup                          show duplicate commands")
+		_, _ = fmt.Fprintln(w, "  --no-import                         exclude imported history")
+		_, _ = fmt.Fprintln(w, "  Env: HX_SESSION_ID, HX_SEARCH_HOST, HX_SEARCH_CWD, PWD")
+	},
+	"show": func(w io.Writer) {
+		_, _ = fmt.Fprintln(w, "hx show: usage: hx show [--raw] <event_id>")
+		_, _ = fmt.Fprintln(w, "  Print event metadata for fzf preview. --raw prints command text only.")
 	},
 	"find": func(w io.Writer) {
 		_, _ = fmt.Fprintln(w, "hx find: usage: hx find <text> [--compact|--wide|--debug] [--include-self] [--no-import] [--width <n>]")
@@ -1506,6 +1523,10 @@ func runCommand(cmd string, args []string) {
 		cmdDebug()
 	case "find":
 		cmdFind(args)
+	case "search":
+		cmdSearch(args)
+	case "show":
+		cmdShow(args)
 	case "attach":
 		cmdAttach(args)
 	case "query":
