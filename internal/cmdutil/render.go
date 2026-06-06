@@ -182,7 +182,7 @@ func renderDebug(rows []Std1Row, termWidth int, w io.Writer) {
 		sepLen = termWidth - 1 // Leave room for newline
 	}
 
-	header := fmt.Sprintf("%-*s %-*s %-*s %-*d %-*s %-*s %-*s %-*s", idWidth, "id", sessionIDWidth, "session_id", seqWidth, "seq", whenAbsWidth, "when", exitWidth, "exit", cwdW, "cwd", cmdW, "cmd")
+	header := fmt.Sprintf("%-*s %-*s %-*s %-*s %-*s %-*s %-*s", idWidth, "id", sessionIDWidth, "session_id", seqWidth, "seq", whenAbsWidth, "when", exitWidth, "exit", cwdW, "cwd", cmdW, "cmd")
 	header = clampLine(header, termWidth)
 	_, _ = fmt.Fprintln(w, header)
 	sepLine := strings.Repeat("-", sepLen)

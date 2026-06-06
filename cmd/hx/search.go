@@ -9,17 +9,24 @@ import (
 
 	"github.com/mrcawood/History_eXtended/internal/db"
 	"github.com/mrcawood/History_eXtended/internal/search"
+	"github.com/mrcawood/History_eXtended/internal/tui"
+	"golang.org/x/term"
 )
 
+// searchExitRun is the exit code from `hx search -i` meaning "run the selected
+// command immediately" (enter_accept). The shell widget maps it to accept-line.
+const searchExitRun = 10
+
 type searchOpts struct {
-	filter   string
-	mode     string
-	format   string
-	limit    int
-	dedup    bool
-	noDedup  bool
-	noImport bool
-	query    string
+	filter      string
+	mode        string
+	format      string
+	limit       int
+	dedup       bool
+	noDedup     bool
+	noImport    bool
+	interactive bool
+	query       string
 }
 
 func cmdSearch(args []string) {
@@ -47,11 +54,6 @@ func cmdSearch(args []string) {
 		fmt.Fprintf(os.Stderr, "hx search: %v\n", err)
 		os.Exit(1)
 	}
-	format, err := search.ParseFormat(opts.format)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "hx search: %v\n", err)
-		os.Exit(1)
-	}
 
 	req := search.Request{
 		Query:     opts.query,
@@ -63,6 +65,35 @@ func cmdSearch(args []string) {
 		Dedup:     opts.dedup,
 		Limit:     opts.limit,
 		NoImport:  opts.noImport,
+	}
+
+	if opts.interactive {
+		if !term.IsTerminal(int(os.Stdin.Fd())) {
+			fmt.Fprintf(os.Stderr, "hx search: %v\n", tui.ErrNotTTY)
+			os.Exit(1)
+		}
+		res, err := tui.Run(tui.Options{Conn: conn, Cfg: cfg, Req: req})
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "hx search: %v\n", err)
+			os.Exit(1)
+		}
+		if res.Cancelled || res.Cmd == "" {
+			return
+		}
+		fmt.Println(res.Cmd)
+		if res.RunRequested {
+			// Exit 10 signals the shell widget to run (accept-line) rather than
+			// just insert the command for editing. os.Exit skips defers, so close.
+			_ = conn.Close()
+			os.Exit(searchExitRun)
+		}
+		return
+	}
+
+	format, err := search.ParseFormat(opts.format)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "hx search: %v\n", err)
+		os.Exit(1)
 	}
 
 	rows, err := search.Search(context.Background(), conn, cfg, req)
@@ -179,6 +210,8 @@ func parseSearchArgs(args []string) (searchOpts, error) {
 			opts.noDedup = true
 		case "--no-import":
 			opts.noImport = true
+		case "-i", "--interactive":
+			opts.interactive = true
 		case "-h", "--help":
 			printSubcommandHelp(os.Stdout, "search")
 			os.Exit(0)

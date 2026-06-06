@@ -371,6 +371,34 @@ func FilterName(f Filter) string {
 	}
 }
 
+// NextFilter cycles filter scope (atuin Ctrl-R).
+func NextFilter(f Filter) Filter {
+	switch f {
+	case FilterGlobal:
+		return FilterHost
+	case FilterHost:
+		return FilterDir
+	case FilterDir:
+		return FilterSession
+	default:
+		return FilterGlobal
+	}
+}
+
+// NextMode cycles search mode (atuin Ctrl-S).
+func NextMode(m Mode) Mode {
+	switch m {
+	case ModeFuzzy:
+		return ModePrefix
+	case ModePrefix:
+		return ModeFTS
+	case ModeFTS:
+		return ModeSemantic
+	default:
+		return ModeFuzzy
+	}
+}
+
 // ModeName returns the CLI name for a mode.
 func ModeName(m Mode) string {
 	switch m {
