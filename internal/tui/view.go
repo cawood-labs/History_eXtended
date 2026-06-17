@@ -2,22 +2,39 @@ package tui
 
 import (
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/mrcawood/History_eXtended/internal/search"
 )
 
+// Package-level styles are rebound in initStyles before each Run. Lipgloss
+// detects color from its renderer's writer; zsh widgets pipe stdout so the
+// default renderer (stdout) would disable ANSI color.
 var (
-	styleTitle   = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("69"))
-	styleMuted   = lipgloss.NewStyle().Foreground(lipgloss.Color("241"))
-	styleSel     = lipgloss.NewStyle().Bold(true).Background(lipgloss.Color("236"))
-	styleExitOK  = lipgloss.NewStyle().Foreground(lipgloss.Color("42"))
-	styleExitBad = lipgloss.NewStyle().Foreground(lipgloss.Color("196"))
-	styleSync    = lipgloss.NewStyle().Foreground(lipgloss.Color("214"))
-	styleFooter  = lipgloss.NewStyle().Foreground(lipgloss.Color("241"))
-	stylePreview = lipgloss.NewStyle().Padding(0, 1)
+	styleTitle   lipgloss.Style
+	styleMuted   lipgloss.Style
+	styleSel     lipgloss.Style
+	styleExitOK  lipgloss.Style
+	styleExitBad lipgloss.Style
+	styleSync    lipgloss.Style
+	styleFooter  lipgloss.Style
+	stylePreview lipgloss.Style
 )
+
+func initStyles(w io.Writer) {
+	r := lipgloss.NewRenderer(w)
+	lipgloss.SetDefaultRenderer(r)
+	styleTitle = r.NewStyle().Bold(true).Foreground(lipgloss.Color("69"))
+	styleMuted = r.NewStyle().Foreground(lipgloss.Color("241"))
+	styleSel = r.NewStyle().Bold(true).Foreground(lipgloss.Color("136")) // dark yellow
+	styleExitOK = r.NewStyle().Foreground(lipgloss.Color("42"))
+	styleExitBad = r.NewStyle().Foreground(lipgloss.Color("196"))
+	styleSync = r.NewStyle().Foreground(lipgloss.Color("214"))
+	styleFooter = r.NewStyle().Foreground(lipgloss.Color("241"))
+	stylePreview = r.NewStyle().Padding(0, 1)
+}
 
 func (m model) View() string {
 	if m.width == 0 {
@@ -85,8 +102,9 @@ func (m model) renderList(width int) string {
 	var b strings.Builder
 	visible := m.visibleRows()
 	for i, row := range visible.rows {
-		line := m.formatRow(row, width-2)
-		if i == m.cursor-visible.offset {
+		selected := i == m.cursor-visible.offset
+		line := m.formatRow(row, width-2, selected)
+		if selected {
 			line = styleSel.Width(width).Render(line)
 		}
 		b.WriteString(line)
@@ -133,23 +151,43 @@ func (m model) listHeight() int {
 	return h
 }
 
-func (m model) formatRow(r search.Row, width int) string {
+func (m model) formatRow(r search.Row, width int, selected bool) string {
 	exit := "-"
-	exitStyle := styleMuted
 	if r.ExitCode != nil {
 		exit = fmt.Sprintf("%d", *r.ExitCode)
+	}
+	when := search.RelTime(r.StartedAt)
+	host := r.Host
+	dup := ""
+	if r.DupCount > 1 {
+		dup = fmt.Sprintf(" ×%d", r.DupCount)
+	}
+
+	// Nested lipgloss styles emit reset codes that break selection backgrounds;
+	// use plain text on the highlighted row.
+	if selected {
+		cmd := r.Cmd
+		maxCmd := width - len(exit) - len(when) - len(host) - len(dup) - 6
+		if maxCmd < 10 {
+			maxCmd = 10
+		}
+		if len(cmd) > maxCmd {
+			cmd = cmd[:maxCmd-3] + "..."
+		}
+		return fmt.Sprintf("%s %s %s  %s%s", exit, when, host, cmd, dup)
+	}
+
+	exitStyle := styleMuted
+	if r.ExitCode != nil {
 		if *r.ExitCode == 0 {
 			exitStyle = styleExitOK
 		} else {
 			exitStyle = styleExitBad
 		}
 	}
-	when := search.RelTime(r.StartedAt)
-	host := r.Host
 	if r.Origin == "sync" && host != "" {
 		host = styleSync.Render(host)
 	}
-	dup := ""
 	if r.DupCount > 1 {
 		dup = styleMuted.Render(fmt.Sprintf(" ×%d", r.DupCount))
 	}

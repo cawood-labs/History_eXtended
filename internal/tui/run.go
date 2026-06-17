@@ -22,8 +22,21 @@ func Run(opts Options) (Result, error) {
 		return Result{}, ErrNotTTY
 	}
 
+	// TUI renders to stderr (stdout may be a pipe when invoked from zsh widgets).
+	out := os.Stderr
+	if !term.IsTerminal(int(out.Fd())) {
+		if tty, err := os.OpenFile("/dev/tty", os.O_WRONLY, 0); err == nil {
+			defer func() { _ = tty.Close() }()
+			out = tty
+		}
+	}
+	initStyles(out)
+
 	m := newModel(opts)
-	p := tea.NewProgram(m, programOptions(m)...)
+	// Render to stderr so zsh widgets can capture the selected command on stdout
+	// via $(hx search -i </dev/tty 2>/dev/tty) without swallowing TUI frames.
+	progOpts := append(programOptions(m), tea.WithOutput(out))
+	p := tea.NewProgram(m, progOpts...)
 	final, err := p.Run()
 	if err != nil {
 		return Result{}, err

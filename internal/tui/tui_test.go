@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"io"
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -62,11 +63,12 @@ func TestEnterAcceptIntent(t *testing.T) {
 }
 
 func TestFormatRowExitColor(t *testing.T) {
+	initStyles(io.Discard)
 	exit := 1
 	m := model{width: 100, rows: []search.Row{{
 		Cmd: "false", ExitCode: &exit, StartedAt: 0,
 	}}}
-	line := m.formatRow(m.rows[0], 80)
+	line := m.formatRow(m.rows[0], 80, false)
 	if line == "" {
 		t.Fatal("empty line")
 	}
