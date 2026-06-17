@@ -56,7 +56,7 @@ type SegmentEvent struct {
 	StartedAt  float64 `json:"started_at"`
 	EndedAt    float64 `json:"ended_at"`
 	DurationMs int64   `json:"duration_ms,omitempty"`
-	ExitCode   int     `json:"exit_code,omitempty"`
+	ExitCode   *int    `json:"exit_code,omitempty"`
 	Cwd        string  `json:"cwd,omitempty"`
 	Cmd        string  `json:"cmd"`
 }

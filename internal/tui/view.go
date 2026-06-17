@@ -100,7 +100,9 @@ func (m model) renderList(width int) string {
 		return styleMuted.Width(width).Render("(no matches)")
 	}
 	var b strings.Builder
-	visible := m.visibleRows()
+	b.WriteString(m.renderListHeader(width - 2))
+	b.WriteByte('\n')
+	visible := m.visibleRows(m.listHeight() - 1)
 	for i, row := range visible.rows {
 		selected := i == m.cursor-visible.offset
 		line := m.formatRow(row, width-2, selected)
@@ -118,10 +120,9 @@ type visibleWindow struct {
 	offset int
 }
 
-func (m model) visibleRows() visibleWindow {
-	maxRows := m.listHeight()
+func (m model) visibleRows(maxRows int) visibleWindow {
 	if maxRows < 1 {
-		maxRows = 10
+		maxRows = 1
 	}
 	if len(m.rows) <= maxRows {
 		return visibleWindow{rows: m.rows, offset: 0}
@@ -149,6 +150,17 @@ func (m model) listHeight() int {
 		return 5
 	}
 	return h
+}
+
+func (m model) renderListHeader(width int) string {
+	if width < 10 {
+		return styleMuted.Width(width).Render("exit when host cmd")
+	}
+	s := "exit when host  cmd"
+	if len(s) > width {
+		s = s[:width]
+	}
+	return styleMuted.Width(width).Render(s)
 }
 
 func (m model) formatRow(r search.Row, width int, selected bool) string {

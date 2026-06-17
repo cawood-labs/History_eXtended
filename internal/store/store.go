@@ -143,10 +143,14 @@ func SyncSessionID(nodeID, origSessionID string) string {
 
 // InsertSyncEvent inserts an event from sync. Uses INSERT OR IGNORE for idempotency.
 // sessionIDInDB must be SyncSessionID(nodeID, origSessionID).
-func (s *Store) InsertSyncEvent(cmd string, startedAt, endedAt float64, durationMs int64, seq int, sessionIDInDB string, cmdID int64) (bool, error) {
+func (s *Store) InsertSyncEvent(cmd string, startedAt, endedAt float64, durationMs int64, exitCode *int, seq int, sessionIDInDB string, cmdID int64) (bool, error) {
+	var exit interface{} = nil
+	if exitCode != nil {
+		exit = *exitCode
+	}
 	res, err := s.db.Exec(
-		`INSERT OR IGNORE INTO events (session_id, seq, started_at, ended_at, duration_ms, exit_code, pipe_status_json, cwd, cmd_id, origin) VALUES (?, ?, ?, ?, ?, NULL, '[]', '', ?, 'sync')`,
-		sessionIDInDB, seq, startedAt, endedAt, durationMs, cmdID,
+		`INSERT OR IGNORE INTO events (session_id, seq, started_at, ended_at, duration_ms, exit_code, pipe_status_json, cwd, cmd_id, origin) VALUES (?, ?, ?, ?, ?, ?, '[]', '', ?, 'sync')`,
+		sessionIDInDB, seq, startedAt, endedAt, durationMs, exit, cmdID,
 	)
 	if err != nil {
 		return false, err

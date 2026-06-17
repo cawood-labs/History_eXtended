@@ -132,9 +132,10 @@ func buildSegmentPayload(conn *sql.DB, nodeID string, events []event) (*SegmentP
 		if e.durationMs.Valid {
 			durMs = e.durationMs.Int64
 		}
-		exitCode := 0
+		var exitCode *int
 		if e.exitCode.Valid {
-			exitCode = int(e.exitCode.Int64)
+			v := int(e.exitCode.Int64)
+			exitCode = &v
 		}
 		segEvents[i] = SegmentEvent{
 			NodeID:     nodeID,
