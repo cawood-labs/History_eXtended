@@ -77,10 +77,17 @@ jobs:
           go tool cover -html=coverage.out -o coverage.html
 
       - name: Upload Coverage
-        uses: codecov/codecov-action@v5
-        with:
-          files: ./coverage.out
-          flags: unittests
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+        run: |
+          # Shell upload: codecov/codecov-action is not on data.forgejo.org (Forgejo act_runner).
+          if [[ -z "${CODECOV_TOKEN:-}" ]]; then
+            echo "CODECOV_TOKEN not set; skipping Codecov upload"
+            exit 0
+          fi
+          curl -sfLo codecov https://uploader.codecov.io/latest/linux/codecov
+          chmod +x codecov
+          ./codecov -t "${CODECOV_TOKEN}" -f ./coverage.out -F unittests
 
       - name: Validate (A1-A7 golden dataset)
         run: |
