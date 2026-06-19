@@ -19,16 +19,31 @@ jobs:
 
       - name: Start MinIO
         run: |
-          docker run -d --name minio \
-            -p 9000:9000 -p 9001:9001 \
-            -e MINIO_ROOT_USER=minioadmin \
-            -e MINIO_ROOT_PASSWORD=minioadmin \
-            minio/minio:RELEASE.2025-09-07T16-13-09Z \
-            server /data --console-address ":9001"
+          # Forgejo act_runner uses remote DinD: -p binds on the daemon bridge, not job localhost.
+          if [[ "${DOCKER_HOST:-}" == tcp://* ]]; then
+            JOB_NET=$(docker inspect -f '{{range $k,$v := .NetworkSettings.Networks}}{{$k}}{{end}}' "$(hostname)")
+            docker run -d --name minio --network "$JOB_NET" \
+              -e MINIO_ROOT_USER=minioadmin \
+              -e MINIO_ROOT_PASSWORD=minioadmin \
+              minio/minio:RELEASE.2025-09-07T16-13-09Z \
+              server /data --console-address ":9001"
+            MINIO_HOST=minio
+          else
+            docker run -d --name minio \
+              -p 9000:9000 -p 9001:9001 \
+              -e MINIO_ROOT_USER=minioadmin \
+              -e MINIO_ROOT_PASSWORD=minioadmin \
+              minio/minio:RELEASE.2025-09-07T16-13-09Z \
+              server /data --console-address ":9001"
+            MINIO_HOST=127.0.0.1
+          fi
 
-          # DinD cold start can exceed 60s; allow 120s before failing.
+          MINIO_ENDPOINT="http://${MINIO_HOST}:9000"
+          echo "HX_S3_ENDPOINT=${MINIO_ENDPOINT}" >> "${GITHUB_ENV}"
+          echo "MinIO endpoint: ${MINIO_ENDPOINT}"
+
           for i in {1..120}; do
-            if curl -fsS http://127.0.0.1:9000/minio/health/live >/dev/null; then
+            if curl -fsS "${MINIO_ENDPOINT}/minio/health/live" >/dev/null; then
               echo "MinIO is up"
               exit 0
             fi
@@ -42,7 +57,7 @@ jobs:
         run: |
           curl -sfLo /tmp/mc https://dl.min.io/client/mc/release/linux-amd64/mc
           chmod +x /tmp/mc
-          /tmp/mc alias set local http://127.0.0.1:9000 minioadmin minioadmin
+          /tmp/mc alias set local "${HX_S3_ENDPOINT}" minioadmin minioadmin
           /tmp/mc mb local/test-bucket --ignore-existing
           /tmp/mc mb local/hx-test --ignore-existing
 
@@ -59,7 +74,7 @@ jobs:
       - name: Phase 2B S3 Integration Tests
         env:
           HX_REQUIRE_S3_ENDPOINT: "1"
-          HX_S3_ENDPOINT: "http://127.0.0.1:9000"
+          HX_S3_ENDPOINT: ${{ env.HX_S3_ENDPOINT }}
           HX_S3_ACCESS_KEY: "minioadmin"
           HX_S3_SECRET_KEY: "minioadmin"
         run: |
