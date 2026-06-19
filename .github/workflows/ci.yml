@@ -26,8 +26,8 @@ jobs:
             minio/minio:RELEASE.2025-09-07T16-13-09Z \
             server /data --console-address ":9001"
 
-          # Wait for readiness from the runner (don't rely on container health-cmd needing curl inside the image)
-          for i in {1..60}; do
+          # DinD cold start can exceed 60s; allow 120s before failing.
+          for i in {1..120}; do
             if curl -fsS http://127.0.0.1:9000/minio/health/live >/dev/null; then
               echo "MinIO is up"
               exit 0
@@ -114,4 +114,4 @@ jobs:
         uses: golangci/golangci-lint-action@v6
         with:
           version: v1.64.8
-          args: --timeout=5m
+          args: --timeout=5m --build-tags=sqlite_fts5
