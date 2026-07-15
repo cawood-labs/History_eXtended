@@ -1,25 +1,21 @@
-# Academic Blacksmith benchmark — do not merge to master as the default CI.
-# Dispatch from Actions UI or:
-#   gh workflow run ci-benchmark.yml --repo cawood-labs/History_eXtended \
-#     --ref experiment/blacksmith-benchmark -f runner=blacksmith-2vcpu-ubuntu-2404
+# Academic Blacksmith benchmark — lives on experiment/blacksmith-benchmark.
+# GitHub only indexes workflow_dispatch on the default branch, so this branch
+# uses push triggers. Edit both runs-on labels and push for each profile.
+#
+# Profiles to try:
+#   ubuntu-latest
+#   blacksmith-2vcpu-ubuntu-2404
+#   blacksmith-8vcpu-ubuntu-2404
 name: CI Benchmark
 
 on:
+  push:
+    branches: [experiment/blacksmith-benchmark]
   workflow_dispatch:
-    inputs:
-      runner:
-        description: Runner label to benchmark
-        required: true
-        type: choice
-        default: blacksmith-2vcpu-ubuntu-2404
-        options:
-          - ubuntu-latest
-          - blacksmith-2vcpu-ubuntu-2404
-          - blacksmith-8vcpu-ubuntu-2404
 
 jobs:
   test:
-    runs-on: ${{ inputs.runner }}
+    runs-on: blacksmith-2vcpu-ubuntu-2404
     steps:
       - uses: actions/checkout@v4
 
@@ -126,7 +122,7 @@ jobs:
           docker rm minio || true
 
   lint:
-    runs-on: ${{ inputs.runner }}
+    runs-on: blacksmith-2vcpu-ubuntu-2404
     steps:
       - uses: actions/checkout@v4
 
